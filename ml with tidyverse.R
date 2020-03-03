@@ -294,3 +294,5 @@ test_predicted <- predict(best_model, testing_data)$predictions
 
 # Calculate the test MAE
 mae(test_actual, test_predicted)
+
+##### Build, Tune & Evaluate Classification Models #####
