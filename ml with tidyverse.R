@@ -266,3 +266,31 @@ cv_model_tunerf <- cv_tune %>%
   mutate(model = map2(.x = train, .y = mtry, ~ranger(formula = life_expectancy~., 
                                                      data = .x, mtry = .y, 
                                                      num.trees = 100, seed = 42)))
+
+# Generate validate predictions for each model
+cv_prep_tunerf <- cv_model_tunerf %>% 
+  mutate(# Extract the recorded life expectancy for the records in the validate dataframes
+    validate_actual = map(validate, ~.x$life_expectancy),
+    validate_predicted = map2(.x = model, .y = validate, ~predict(.x, .y)$predictions))
+
+# Calculate validate MAE for each fold and mtry combination
+cv_eval_tunerf <- cv_prep_tunerf %>% 
+  mutate(validate_mae = map2_dbl(.x = validate_actual, .y = validate_predicted, ~mae(actual = .x, predicted = .y)))
+
+# Calculate the mean validate_mae for each mtry used  
+cv_eval_tunerf %>% 
+  group_by(mtry) %>% 
+  summarise(mean_mae = mean(validate_mae))
+
+# Build the model using all training data and the best performing parameter
+best_model <- ranger(formula = life_expectancy ~ ., data = training_data,
+                     mtry = 2, num.trees = 100, seed = 42)
+
+# Prepare the test_actual vector
+test_actual <- testing_data$life_expectancy
+
+# Predict life_expectancy for the testing_data
+test_predicted <- predict(best_model, testing_data)$predictions
+
+# Calculate the test MAE
+mae(test_actual, test_predicted)
